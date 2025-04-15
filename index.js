@@ -2,7 +2,7 @@ import express from "express";
 import { Feed } from "feed";
 import Parser from "rss-parser";
 import fetch from "node-fetch";
-import * as cheerio from "cheerio";
+import { extract as extractArticle } from "@extractus/article-extractor";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -42,7 +42,7 @@ async function summarizeWithGemini(text) {
             {
               parts: [
                 {
-                  text: `Summarize the following article in a concise paragraph:\n\n${text}`,
+                  text: `Summarize the following article :\n\n${text}`,
                 },
               ],
             },
@@ -83,37 +83,27 @@ setInterval(async () => {
         } else if (item.description) {
           console.log(`      Description: ${item.description}`);
         }
-        // Fetch and parse the linked article
+        // Fetch and extract the main article content
         if (item.link) {
           try {
-            const res = await fetch(item.link, { timeout: 10000 });
-            const html = await res.text();
-            const $ = cheerio.load(html);
-            // Extract main content: join all <p> tags
-            const articleText = $("p")
-              .map((i, el) => $(el).text())
-              .get()
-              .join("\n");
-            if (articleText) {
+            const articleData = await extractArticle(item.link);
+            if (articleData && articleData.content) {
               console.log(
-                `      [Parsed Article Content Preview]:\n${articleText.substring(
-                  0,
-                  500
-                )}...`
+                `      [Full Article Extracted]:\n${articleData.content.substring(0, 1000)}...`
               );
               // Generate summary with Gemini API
               const summary = await summarizeWithGemini(
-                articleText.substring(0, 4000)
+                articleData.content
               );
               if (summary) {
                 console.log(`      [Gemini Summary]: ${summary}`);
               }
             } else {
-              console.log(`      [No readable article content found]`);
+              console.log("      [No full article content extracted]");
             }
           } catch (err) {
             console.log(
-              `      [Failed to fetch/parse article]: ${err.message}`
+              `      [Failed to extract article]: ${err.message}`
             );
           }
         }
