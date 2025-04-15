@@ -12,15 +12,20 @@ function saveSubscriptions() {
   fs.writeFileSync(SUBS_FILE, JSON.stringify(subscriptions, null, 2));
 }
 
-function subscribeToFeed(url) {
-  if (!subscriptions.includes(url)) {
-    subscriptions.push(url);
+function subscribeToFeed(url, name) {
+  if (!subscriptions.some(sub => sub.url === url)) {
+    subscriptions.push({ url, name });
     saveSubscriptions();
-    console.log(`Subscribed to: ${url}`);
+    console.log(`Subscribed to: ${name} (${url})`);
   } else {
     console.log(`Already subscribed to: ${url}`);
   }
 }
 
-export { subscriptions, subscribeToFeed };
+function getFeedNameByUrl(url) {
+  const sub = subscriptions.find(sub => sub.url === url);
+  return sub ? sub.name : undefined;
+}
+
+export { subscriptions, subscribeToFeed, getFeedNameByUrl, saveSubscriptions };
 
