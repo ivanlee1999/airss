@@ -6,6 +6,7 @@
   "dependencies": {
     "@extractus/article-extractor": "^8.0.17",
     "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "feed": "^4.2.2",
