@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS Subscriptions</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    h1 { color: #2c3e50; }
+    form { margin-bottom: 1em; }
+    ul { list-style-type: none; padding: 0; }
+    li { background: #f2f2f2; margin: 0.5em 0; padding: 0.5em; border-radius: 4px; }
+    #status { color: #27ae60; margin-top: 0.5em; }
+    #error { color: #c0392b; margin-top: 0.5em; }
+  </style>
+</head>
+<body>
+  <h1>RSS Subscriptions</h1>
+  <form id="subscribe-form">
+    <input type="url" id="rss-url" placeholder="Enter RSS feed URL" required style="width: 300px;">
+    <button type="submit">Subscribe</button>
+  </form>
+  <div id="status"></div>
+  <div id="error"></div>
+  <h2>Subscribed Feeds</h2>
+  <ul id="subscriptions"></ul>
+  <script>
+    const API_BASE = 'http://localhost:3001';
+    async function fetchSubscriptions() {
+      const res = await fetch(`${API_BASE}/subscriptions`);
+      const data = await res.json();
+      const ul = document.getElementById('subscriptions');
+      ul.innerHTML = '';
+      data.subscriptions.forEach(url => {
+        const li = document.createElement('li');
+        li.textContent = url;
+        ul.appendChild(li);
+      });
+    }
+    document.getElementById('subscribe-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('status').textContent = '';
+      document.getElementById('error').textContent = '';
+      const url = document.getElementById('rss-url').value;
+      try {
+        const res = await fetch(`${API_BASE}/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('status').textContent = data.message;
+          document.getElementById('rss-url').value = '';
+          fetchSubscriptions();
+        } else {
+          document.getElementById('error').textContent = data.error || data.message;
+        }
+      } catch (err) {
+        document.getElementById('error').textContent = 'Failed to subscribe.';
+      }
+    });
+    fetchSubscriptions();
+  </script>
+</body>
+</html>
