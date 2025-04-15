@@ -1,8 +1,10 @@
-import express from 'express';
-import { Feed } from 'feed';
-import Parser from 'rss-parser';
-import fetch from 'node-fetch';
-import * as cheerio from 'cheerio';
+import express from "express";
+import { Feed } from "feed";
+import Parser from "rss-parser";
+import fetch from "node-fetch";
+import * as cheerio from "cheerio";
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 const port = 3000;
@@ -21,10 +23,54 @@ function subscribeToFeed(url) {
   }
 }
 
+// Gemini API summarization function
+async function summarizeWithGemini(text) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.log("      [Gemini API key missing. Set GEMINI_API_KEY in .env]");
+    return null;
+  }
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
+        apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Summarize the following article in a concise paragraph:\n\n${text}`,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+    const data = await res.json();
+    if (
+      data &&
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts
+    ) {
+      return data.candidates[0].content.parts.map((p) => p.text).join(" ");
+    } else {
+      return "[No summary returned from Gemini API]";
+    }
+  } catch (err) {
+    return `[Gemini API error: ${err.message}]`;
+  }
+}
+
 // Background job to fetch all subscribed feeds every 10 minutes
 setInterval(async () => {
   if (subscriptions.length === 0) return;
-  console.log('Fetching subscribed RSS feeds...');
+  console.log("Fetching subscribed RSS feeds...");
   for (const url of subscriptions) {
     try {
       const feed = await parser.parseURL(url);
@@ -44,14 +90,31 @@ setInterval(async () => {
             const html = await res.text();
             const $ = cheerio.load(html);
             // Extract main content: join all <p> tags
-            const articleText = $('p').map((i, el) => $(el).text()).get().join('\n');
+            const articleText = $("p")
+              .map((i, el) => $(el).text())
+              .get()
+              .join("\n");
             if (articleText) {
-              console.log(`      [Parsed Article Content Preview]:\n${articleText.substring(0, 500)}...`);
+              console.log(
+                `      [Parsed Article Content Preview]:\n${articleText.substring(
+                  0,
+                  500
+                )}...`
+              );
+              // Generate summary with Gemini API
+              const summary = await summarizeWithGemini(
+                articleText.substring(0, 4000)
+              );
+              if (summary) {
+                console.log(`      [Gemini Summary]: ${summary}`);
+              }
             } else {
               console.log(`      [No readable article content found]`);
             }
           } catch (err) {
-            console.log(`      [Failed to fetch/parse article]: ${err.message}`);
+            console.log(
+              `      [Failed to fetch/parse article]: ${err.message}`
+            );
           }
         }
       }
@@ -59,7 +122,7 @@ setInterval(async () => {
       console.error(`Failed to fetch ${url}:`, err.message);
     }
   }
-}, 1 * 5 * 1000); // every 10 minutes
+}, 1 * 10 * 1000); // every 10 minutes
 
 // Example usage (remove or replace with dynamic logic)
 // subscribeToFeed('https://hnrss.org/frontpage');
@@ -74,13 +137,13 @@ const feed = new Feed({
   updated: new Date(),
   generator: "Simple RSS Publisher",
   feedLinks: {
-    rss2: 'http://localhost:3000/rss'
+    rss2: "http://localhost:3000/rss",
   },
   author: {
     name: "RSS Publisher",
     email: "example@example.com",
-    link: "http://localhost:3000"
-  }
+    link: "http://localhost:3000",
+  },
 });
 
 // Add a sample item to the feed
@@ -90,26 +153,26 @@ feed.addItem({
   link: "http://localhost:3000/article1",
   description: "This is my first article",
   content: "Hello, this is the content of my first article!",
-  date: new Date()
+  date: new Date(),
 });
 
-app.get('/rss', (req, res) => {
-  res.type('application/rss+xml');
-  res.set('Content-Type', 'application/rss+xml; charset=utf-8');
+app.get("/rss", (req, res) => {
+  res.type("application/rss+xml");
+  res.set("Content-Type", "application/rss+xml; charset=utf-8");
   res.send(feed.rss2());
 });
 
 // Simple endpoint to subscribe via API
-app.post('/subscribe', express.json(), (req, res) => {
+app.post("/subscribe", express.json(), (req, res) => {
   const { url } = req.body;
   if (!url) {
-    return res.status(400).json({ error: 'Missing RSS feed URL' });
+    return res.status(400).json({ error: "Missing RSS feed URL" });
   }
   subscribeToFeed(url);
   res.json({ message: `Subscribed to ${url}` });
 });
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send(`
     <h1>RSS Publisher</h1>
     <p>RSS Feed URL: <a href="/rss">http://localhost:3000/rss</a></p>
