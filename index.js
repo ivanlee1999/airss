@@ -1,8 +1,41 @@
 import express from 'express';
 import { Feed } from 'feed';
+import Parser from 'rss-parser';
 
 const app = express();
 const port = 3000;
+
+// In-memory RSS subscription store
+const subscriptions = [];
+const parser = new Parser();
+
+// Function to subscribe to a new RSS feed
+function subscribeToFeed(url) {
+  if (!subscriptions.includes(url)) {
+    subscriptions.push(url);
+    console.log(`Subscribed to: ${url}`);
+  } else {
+    console.log(`Already subscribed to: ${url}`);
+  }
+}
+
+// Background job to fetch all subscribed feeds every 10 minutes
+setInterval(async () => {
+  if (subscriptions.length === 0) return;
+  console.log('Fetching subscribed RSS feeds...');
+  for (const url of subscriptions) {
+    try {
+      const feed = await parser.parseURL(url);
+      console.log(`Fetched feed: ${feed.title} (${url})`);
+      // Here you can process feed.items as needed
+    } catch (err) {
+      console.error(`Failed to fetch ${url}:`, err.message);
+    }
+  }
+}, 1 * 10 * 1000); // every 10 minutes
+
+// Example usage (remove or replace with dynamic logic)
+// subscribeToFeed('https://hnrss.org/frontpage');
 
 // Create a new feed
 const feed = new Feed({
@@ -37,6 +70,16 @@ app.get('/rss', (req, res) => {
   res.type('application/rss+xml');
   res.set('Content-Type', 'application/rss+xml; charset=utf-8');
   res.send(feed.rss2());
+});
+
+// Simple endpoint to subscribe via API
+app.post('/subscribe', express.json(), (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'Missing RSS feed URL' });
+  }
+  subscribeToFeed(url);
+  res.json({ message: `Subscribed to ${url}` });
 });
 
 app.get('/', (req, res) => {
