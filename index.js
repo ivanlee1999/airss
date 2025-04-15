@@ -1,6 +1,8 @@
 import express from 'express';
 import { Feed } from 'feed';
 import Parser from 'rss-parser';
+import fetch from 'node-fetch';
+import * as cheerio from 'cheerio';
 
 const app = express();
 const port = 3000;
@@ -28,14 +30,31 @@ setInterval(async () => {
       const feed = await parser.parseURL(url);
       console.log(`Fetched feed: ${feed.title} (${url})`);
       // Print each item in the feed
-      feed.items.forEach((item, idx) => {
+      for (const [idx, item] of feed.items.entries()) {
         console.log(`  [${idx + 1}] ${item.title} - ${item.link}`);
         if (item.content) {
           console.log(`      Content: ${item.content}`);
         } else if (item.description) {
           console.log(`      Description: ${item.description}`);
         }
-      });
+        // Fetch and parse the linked article
+        if (item.link) {
+          try {
+            const res = await fetch(item.link, { timeout: 10000 });
+            const html = await res.text();
+            const $ = cheerio.load(html);
+            // Extract main content: join all <p> tags
+            const articleText = $('p').map((i, el) => $(el).text()).get().join('\n');
+            if (articleText) {
+              console.log(`      [Parsed Article Content Preview]:\n${articleText.substring(0, 500)}...`);
+            } else {
+              console.log(`      [No readable article content found]`);
+            }
+          } catch (err) {
+            console.log(`      [Failed to fetch/parse article]: ${err.message}`);
+          }
+        }
+      }
     } catch (err) {
       console.error(`Failed to fetch ${url}:`, err.message);
     }
