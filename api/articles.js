@@ -1,5 +1,6 @@
 // Article persistence logic: load/save/upsert articles
 import fs from 'fs';
+import { getFeedNameByUrl } from './subscriptions.js';
 const DATA_FILE = './data/articles.json';
 
 let articles = [];
@@ -12,6 +13,11 @@ function saveArticles() {
 }
 
 function upsertArticle(article) {
+  // Add feedName from subscriptions if not present or outdated
+  if (article.feedUrl) {
+    const feedName = getFeedNameByUrl(article.feedUrl);
+    if (feedName) article.feedName = feedName;
+  }
   const idx = articles.findIndex(a => a.link === article.link);
   if (idx === -1) {
     articles.push(article);
