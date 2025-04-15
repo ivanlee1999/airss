@@ -31,9 +31,13 @@
       const data = await res.json();
       const ul = document.getElementById('subscriptions');
       ul.innerHTML = '';
-      data.subscriptions.forEach(url => {
+      data.subscriptions.forEach(sub => {
         const li = document.createElement('li');
-        li.textContent = url;
+        const a = document.createElement('a');
+        a.href = `http://localhost:3001/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
+        a.textContent = `${sub.name} (${sub.url})`;
+        a.target = '_blank';
+        li.appendChild(a);
         ul.appendChild(li);
       });
     }
