@@ -27,12 +27,20 @@ setInterval(async () => {
     try {
       const feed = await parser.parseURL(url);
       console.log(`Fetched feed: ${feed.title} (${url})`);
-      // Here you can process feed.items as needed
+      // Print each item in the feed
+      feed.items.forEach((item, idx) => {
+        console.log(`  [${idx + 1}] ${item.title} - ${item.link}`);
+        if (item.content) {
+          console.log(`      Content: ${item.content}`);
+        } else if (item.description) {
+          console.log(`      Description: ${item.description}`);
+        }
+      });
     } catch (err) {
       console.error(`Failed to fetch ${url}:`, err.message);
     }
   }
-}, 1 * 10 * 1000); // every 10 minutes
+}, 1 * 5 * 1000); // every 10 minutes
 
 // Example usage (remove or replace with dynamic logic)
 // subscribeToFeed('https://hnrss.org/frontpage');
