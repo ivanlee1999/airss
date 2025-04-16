@@ -81,7 +81,7 @@ apiApp.get('/subscriptions-rss', (req, res) => {
   res.send(feed.rss2());
 });
 
-// Publish articles as an RSS feed, filtered by feedUrl if provided
+// Return an RSS feed where each item is a daily aggregation of article summaries and links
 apiApp.get('/articles-rss', (req, res) => {
   let articles = [];
   try {
@@ -94,9 +94,18 @@ apiApp.get('/articles-rss', (req, res) => {
     filtered = articles.filter(a => a.feedUrl === feedUrl);
   }
 
+  // Group articles by pubDate (YYYY-MM-DD)
+  const byDay = {};
+  filtered.forEach(article => {
+    if (!article.pubDate) return;
+    const dateStr = new Date(article.pubDate).toISOString().slice(0, 10);
+    if (!byDay[dateStr]) byDay[dateStr] = [];
+    byDay[dateStr].push(article);
+  });
+
   const feed = new Feed({
-    title: feedUrl ? `Articles for ${feedUrl}` : 'All Articles',
-    description: feedUrl ? `RSS articles for ${feedUrl}` : 'All articles from all feeds',
+    title: feedUrl ? `Aggregated Daily Articles for ${feedUrl}` : 'Aggregated Daily Articles',
+    description: feedUrl ? `Daily RSS article digests for ${feedUrl}` : 'Daily digests of all articles from all feeds',
     id: `${API_BASE_URL}/articles-rss`,
     link: `${API_BASE_URL}/articles-rss`,
     language: 'en',
@@ -106,14 +115,18 @@ apiApp.get('/articles-rss', (req, res) => {
     author: { name: 'RSS Publisher' },
   });
 
-  filtered.forEach(article => {
+  Object.entries(byDay).forEach(([date, articles]) => {
+    const htmlList = articles.map(a => {
+      const safeSummary = a.summary ? a.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+      return `<li><a href="${a.link}" target="_blank">${a.title || a.link}</a>: ${safeSummary}</li>`;
+    }).join('\n');
     feed.addItem({
-      title: article.title || article.link,
-      id: article.id || article.link,
-      link: article.link,
-      description: article.summary || '',
-      content: article.content || '',
-      date: article.pubDate ? new Date(article.pubDate) : new Date(),
+      title: `Digest for ${date}`,
+      id: date,
+      link: `${API_BASE_URL}/articles-rss?date=${date}`,
+      description: `Daily digest for ${date}`,
+      content: `<ul>${htmlList}</ul>`,
+      date: new Date(date)
     });
   });
 
