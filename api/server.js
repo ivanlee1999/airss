@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import { subscriptions, subscribeToFeed } from "./subscriptions.js";
 import { articles } from "./articles.js";
-import { startFeedJob } from "./feeds.js";
+import { startFeedJob, fetchAllFeeds } from './feeds.js';
 
 const apiApp = express();
 const API_PORT = 3001;
@@ -33,7 +33,8 @@ apiApp.post("/subscribe", async (req, res) => {
       feedName = url;
     }
   }
-  subscribeToFeed(url, feedName);
+  const newSub = subscribeToFeed(url, feedName);
+  await fetchAllFeeds();
   res.json({ message: `Subscribed to ${feedName} (${url})` });
 });
 
