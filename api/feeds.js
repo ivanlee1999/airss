@@ -7,11 +7,10 @@ import { summarizeWithGemini } from './summarize.js';
 
 const parser = new Parser();
 
-function startFeedJob() {
-  setInterval(async () => {
-    if (subscriptions.length === 0) return;
-    console.log("Fetching subscribed RSS feeds...");
-    for (const sub of subscriptions) {
+async function fetchAllFeeds() {
+  if (subscriptions.length === 0) return;
+  console.log("Fetching subscribed RSS feeds...");
+  for (const sub of subscriptions) {
       try {
         const feed = await parser.parseURL(sub.url);
         console.log(`Fetched feed: ${feed.title} (${sub.url})`);
@@ -60,8 +59,11 @@ function startFeedJob() {
         console.error(`Failed to fetch ${sub.url}:`, err.message);
       }
     }
-  }, 1 * 60 * 1000);
 }
 
-export { startFeedJob };
+function startFeedJob() {
+  setInterval(fetchAllFeeds, 1 * 60 * 1000);
+}
+
+export { startFeedJob, fetchAllFeeds };
 
