@@ -34,10 +34,27 @@
       data.subscriptions.forEach(sub => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = `http://localhost:3001/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
+        const rssUrl = `http://localhost:3001/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
+        a.href = rssUrl;
         a.textContent = `${sub.name} (${sub.url})`;
         a.target = '_blank';
         li.appendChild(a);
+
+        // Copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy RSS URL';
+        copyBtn.style.marginLeft = '8px';
+        copyBtn.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(rssUrl);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy RSS URL'; }, 1500);
+          } catch (err) {
+            copyBtn.textContent = 'Failed to copy';
+            setTimeout(() => { copyBtn.textContent = 'Copy RSS URL'; }, 1500);
+          }
+        };
+        li.appendChild(copyBtn);
         ul.appendChild(li);
       });
     }
