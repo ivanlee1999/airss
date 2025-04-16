@@ -25,7 +25,14 @@
   <h2>Subscribed Feeds</h2>
   <ul id="subscriptions"></ul>
   <script>
-    const API_BASE = 'http://localhost:3001';
+    // Inject environment variables from <meta> tags or server-side rendering
+    window.ENV = window.ENV || {};
+    window.ENV.API_BASE_URL = window.ENV.API_BASE_URL || (document.querySelector('meta[name="api-base-url"]')?.content || 'http://localhost:3001');
+    window.ENV.UI_BASE_URL = window.ENV.UI_BASE_URL || (document.querySelector('meta[name="ui-base-url"]')?.content || 'http://localhost:3000');
+  </script>
+  <script>
+    // Use the API_BASE_URL from window.ENV
+    const API_BASE = window.ENV && window.ENV.API_BASE_URL ? window.ENV.API_BASE_URL : 'http://localhost:3001';
     async function fetchSubscriptions() {
       const res = await fetch(`${API_BASE}/subscriptions`);
       const data = await res.json();
@@ -34,7 +41,7 @@
       data.subscriptions.forEach(sub => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        const rssUrl = `http://localhost:3001/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
+        const rssUrl = `${window.ENV.API_BASE_URL}/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
         a.href = rssUrl;
         a.textContent = `${sub.name} (${sub.url})`;
         a.target = '_blank';

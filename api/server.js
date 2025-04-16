@@ -40,6 +40,11 @@ apiApp.post("/subscribe", async (req, res) => {
 
 import { Feed } from 'feed';
 import fs from 'fs';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+const UI_BASE_URL = process.env.UI_BASE_URL || 'http://localhost:3000';
 
 // Publish subscriptions as an RSS feed
 apiApp.get('/subscriptions-rss', (req, res) => {
@@ -52,12 +57,12 @@ apiApp.get('/subscriptions-rss', (req, res) => {
   const feed = new Feed({
     title: 'My Subscribed RSS Feeds',
     description: 'A list of feeds I am subscribed to',
-    id: 'http://localhost:3001/subscriptions-rss',
-    link: 'http://localhost:3001/subscriptions-rss',
+    id: `${API_BASE_URL}/subscriptions-rss`,
+    link: `${API_BASE_URL}/subscriptions-rss`,
     language: 'en',
     updated: new Date(),
     generator: 'airss',
-    feedLinks: { rss2: 'http://localhost:3001/subscriptions-rss' },
+    feedLinks: { rss2: `${API_BASE_URL}/subscriptions-rss` },
     author: { name: 'RSS Publisher' },
   });
 
@@ -92,12 +97,12 @@ apiApp.get('/articles-rss', (req, res) => {
   const feed = new Feed({
     title: feedUrl ? `Articles for ${feedUrl}` : 'All Articles',
     description: feedUrl ? `RSS articles for ${feedUrl}` : 'All articles from all feeds',
-    id: 'http://localhost:3001/articles-rss',
-    link: 'http://localhost:3001/articles-rss',
+    id: `${API_BASE_URL}/articles-rss`,
+    link: `${API_BASE_URL}/articles-rss`,
     language: 'en',
     updated: new Date(),
     generator: 'airss',
-    feedLinks: { rss2: 'http://localhost:3001/articles-rss' },
+    feedLinks: { rss2: `${API_BASE_URL}/articles-rss` },
     author: { name: 'RSS Publisher' },
   });
 
