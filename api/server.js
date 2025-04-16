@@ -12,12 +12,16 @@ const API_PORT = 3001;
 apiApp.use(cors({ origin: "http://localhost:3000" }));
 apiApp.use(express.json());
 
-apiApp.get("/subscriptions", (req, res) => {
-  res.json({ subscriptions });
-});
-
 import Parser from 'rss-parser';
 const rssParser = new Parser();
+
+import { getAllSubscriptions, subscribeToFeed, getFeedNameByUrl } from './subscriptions.js';
+import { getAllArticles, getArticlesByFeedUrl, upsertArticle } from './articles.js';
+
+apiApp.get("/subscriptions", async (req, res) => {
+  const subscriptions = await getAllSubscriptions();
+  res.json({ subscriptions });
+});
 
 apiApp.post("/subscribe", async (req, res) => {
   const { url, name } = req.body;
@@ -33,7 +37,7 @@ apiApp.post("/subscribe", async (req, res) => {
       feedName = url;
     }
   }
-  const newSub = subscribeToFeed(url, feedName);
+  await subscribeToFeed(url, feedName);
   await fetchAllFeeds();
   res.json({ message: `Subscribed to ${feedName} (${url})` });
 });
@@ -47,12 +51,8 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 const UI_BASE_URL = process.env.UI_BASE_URL || 'http://localhost:3000';
 
 // Publish subscriptions as an RSS feed
-apiApp.get('/subscriptions-rss', (req, res) => {
-  // Always read the latest subscriptions from disk
-  let subscriptionsList = [];
-  try {
-    subscriptionsList = JSON.parse(fs.readFileSync('./data/subscriptions.json', 'utf-8'));
-  } catch (e) {}
+apiApp.get('/subscriptions-rss', async (req, res) => {
+  const subscriptionsList = await getAllSubscriptions();
 
   const feed = new Feed({
     title: 'My Subscribed RSS Feeds',
@@ -82,21 +82,18 @@ apiApp.get('/subscriptions-rss', (req, res) => {
 });
 
 // Return an RSS feed where each item is a daily aggregation of article summaries and links
-apiApp.get('/articles-rss', (req, res) => {
+apiApp.get('/articles-rss', async (req, res) => {
   let articles = [];
-  try {
-    articles = JSON.parse(fs.readFileSync('./data/articles.json', 'utf-8'));
-  } catch (e) {}
-
   const { feedUrl } = req.query;
-  let filtered = articles;
   if (feedUrl) {
-    filtered = articles.filter(a => a.feedUrl === feedUrl);
+    articles = await getArticlesByFeedUrl(feedUrl);
+  } else {
+    articles = await getAllArticles();
   }
 
   // Group articles by pubDate (YYYY-MM-DD)
   const byDay = {};
-  filtered.forEach(article => {
+  articles.forEach(article => {
     if (!article.pubDate) return;
     const dateStr = new Date(article.pubDate).toISOString().slice(0, 10);
     if (!byDay[dateStr]) byDay[dateStr] = [];

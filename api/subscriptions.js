@@ -1,31 +1,26 @@
-// Subscription logic: in-memory store and subscribeToFeed
+// Subscription logic: MongoDB store and subscribeToFeed
 
-import fs from 'fs';
-const SUBS_FILE = './data/subscriptions.json';
+import { connectDB, getDB } from './db.js'; // Uses DB_URI from .env
 
-let subscriptions = [];
-if (fs.existsSync(SUBS_FILE)) {
-  subscriptions = JSON.parse(fs.readFileSync(SUBS_FILE, 'utf-8'));
+// Subscribe to a feed (insert if not present)
+export async function subscribeToFeed(url, name) {
+  const db = await connectDB();
+  await db.collection('subscriptions').updateOne(
+    { url },
+    { $set: { url, name } },
+    { upsert: true }
+  );
 }
 
-function saveSubscriptions() {
-  fs.writeFileSync(SUBS_FILE, JSON.stringify(subscriptions, null, 2));
+// Get all subscriptions
+export async function getAllSubscriptions() {
+  const db = await connectDB();
+  return db.collection('subscriptions').find().toArray();
 }
 
-function subscribeToFeed(url, name) {
-  if (!subscriptions.some(sub => sub.url === url)) {
-    subscriptions.push({ url, name });
-    saveSubscriptions();
-    console.log(`Subscribed to: ${name} (${url})`);
-  } else {
-    console.log(`Already subscribed to: ${url}`);
-  }
+// Get feed name by URL
+export async function getFeedNameByUrl(url) {
+  const db = await connectDB();
+  const sub = await db.collection('subscriptions').findOne({ url });
+  return sub ? sub.name : url;
 }
-
-function getFeedNameByUrl(url) {
-  const sub = subscriptions.find(sub => sub.url === url);
-  return sub ? sub.name : undefined;
-}
-
-export { subscriptions, subscribeToFeed, getFeedNameByUrl, saveSubscriptions };
-

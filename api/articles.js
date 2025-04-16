@@ -1,31 +1,30 @@
 // Article persistence logic: load/save/upsert articles
-import fs from 'fs';
 import { getFeedNameByUrl } from './subscriptions.js';
-const DATA_FILE = './data/articles.json';
+import { connectDB, getDB } from './db.js'; // Uses DB_URI from .env
 
-let articles = [];
-if (fs.existsSync(DATA_FILE)) {
-  articles = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-}
-
-function saveArticles() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(articles, null, 2));
-}
-
-function upsertArticle(article) {
+// Upsert an article by link
+export async function upsertArticle(article) {
+  const db = await connectDB();
   // Add feedName from subscriptions if not present or outdated
   if (article.feedUrl) {
     const feedName = getFeedNameByUrl(article.feedUrl);
     if (feedName) article.feedName = feedName;
   }
-  const idx = articles.findIndex(a => a.link === article.link);
-  if (idx === -1) {
-    articles.push(article);
-  } else {
-    articles[idx] = article;
-  }
-  saveArticles();
+  await db.collection('articles').updateOne(
+    { link: article.link },
+    { $set: article },
+    { upsert: true }
+  );
 }
 
-export { articles, upsertArticle, saveArticles };
+// Get all articles
+export async function getAllArticles() {
+  const db = await connectDB();
+  return db.collection('articles').find().toArray();
+}
 
+// Get articles by feedUrl
+export async function getArticlesByFeedUrl(feedUrl) {
+  const db = await connectDB();
+  return db.collection('articles').find({ feedUrl }).toArray();
+}
