@@ -1,8 +1,8 @@
 // API server (port 3001)
 import express from "express";
 import cors from "cors";
-import { subscriptions, subscribeToFeed } from "./subscriptions.js";
-import { articles } from "./articles.js";
+
+
 import { startFeedJob, fetchAllFeeds } from './feeds.js';
 
 const apiApp = express();
@@ -136,4 +136,4 @@ apiApp.listen(API_PORT, () => {
   console.log(`API running at http://localhost:${API_PORT}`);
 });
 
-startFeedJob();
+
