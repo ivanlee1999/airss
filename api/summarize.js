@@ -30,6 +30,11 @@ async function summarizeWithGemini(text) {
       }
     );
     const data = await res.json();
+    if (!res.ok) {
+      console.error("[Gemini API Error]", data);
+      return `[Gemini API error: ${data.error?.message || res.status}]`;
+    }
+    console.log("[Gemini API Raw Response]", data);
     if (
       data &&
       data.candidates &&
