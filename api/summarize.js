@@ -60,7 +60,7 @@ async function _summarizeWithGemini(text) {
     const data = await res.json();
     if (!res.ok) {
       console.error("[Gemini API Error]", data);
-      return `[Gemini API error: ${data.error?.message || res.status}]`;
+      return null;
     }
     console.log("[Gemini API Raw Response]", data);
     if (
@@ -72,10 +72,12 @@ async function _summarizeWithGemini(text) {
     ) {
       return data.candidates[0].content.parts.map((p) => p.text).join(" ");
     } else {
+      console.log("[Gemini API] No summary returned");
       return null;
     }
   } catch (err) {
-    return `[Gemini API error: ${err.message}]`;
+    console.error("[Gemini API Error]", err);
+    return null;
   }
 }
 
