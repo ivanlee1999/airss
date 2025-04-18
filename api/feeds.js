@@ -7,6 +7,7 @@ import { summarizeWithGemini } from './summarize.js';
 
 const parser = new Parser();
 
+// Fetch and store articles (no summarization)
 async function fetchAllFeeds() {
   const subscriptions = await getAllSubscriptions();
   if (!subscriptions || subscriptions.length === 0) return;
@@ -24,11 +25,6 @@ async function fetchAllFeeds() {
               console.log(
                 `      [Full Article Extracted]:\n${articleData.content.substring(0, 1000)}...`
               );
-              // Always summarize and upsert (if you want to avoid duplicate summaries, implement a DB check)
-              const summary = await summarizeWithGemini(articleData.content);
-              if (summary) {
-                console.log(`      [Gemini Summary]: ${summary}`);
-              }
               await upsertArticle({
                 id: item.link,
                 feedUrl: sub.url,
@@ -36,8 +32,8 @@ async function fetchAllFeeds() {
                 link: item.link,
                 pubDate: item.pubDate || new Date().toISOString(),
                 content: articleData.content,
-                summary: summary,
-                sentToGemini: !!summary,
+                summary: null,
+                sentToGemini: false,
                 processedAt: new Date().toISOString()
               });
             } else {
@@ -56,9 +52,37 @@ async function fetchAllFeeds() {
   }
 }
 
-function startFeedJob() {
-  setInterval(fetchAllFeeds, 1 * 5 * 1000);
+// Summarize articles that have no summary
+import { getAllArticles } from './articles.js';
+async function summarizeAllArticles() {
+  const articles = await getAllArticles();
+  const unsummarized = articles.filter(a => !a.summary && a.content);
+  console.log(`[Summarizer] ${unsummarized.length} articles to summarize`);
+  for (const article of unsummarized) {
+    try {
+      const summary = await summarizeWithGemini(article.content);
+      if (summary) {
+        console.log(`[Summarizer] Gemini Summary for ${article.link}: ${summary}`);
+      }
+      await upsertArticle({
+        ...article,
+        summary: summary,
+        sentToGemini: !!summary,
+        processedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error(`[Summarizer] Error summarizing ${article.link}:`, err.message);
+    }
+  }
 }
 
-export { startFeedJob, fetchAllFeeds };
+function startFeedJob(freqMs = 5 * 60 * 1000) {
+  setInterval(fetchAllFeeds, freqMs);
+}
+
+function startSummarizeJob(freqMs = 30 * 60 * 1000) {
+  setInterval(summarizeAllArticles, freqMs);
+}
+
+export { startFeedJob, fetchAllFeeds, startSummarizeJob, summarizeAllArticles };
 
