@@ -3,7 +3,35 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// --- Gemini API Rate Limiter ---
+const RATE_LIMIT = 15; // requests per minute
+const INTERVAL_MS = 60_000 / RATE_LIMIT; // 4 seconds per request
+let queue = [];
+let processing = false;
+
+function processQueue() {
+  if (queue.length === 0) return;
+  if (processing) return;
+  processing = true;
+  const { text, resolve, reject } = queue.shift();
+  _summarizeWithGemini(text)
+    .then(resolve)
+    .catch(reject)
+    .finally(() => {
+      processing = false;
+      setTimeout(processQueue, INTERVAL_MS);
+    });
+}
+
 async function summarizeWithGemini(text) {
+  return new Promise((resolve, reject) => {
+    queue.push({ text, resolve, reject });
+    processQueue();
+  });
+}
+
+// --- Actual Gemini API logic below ---
+async function _summarizeWithGemini(text) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.log("      [Gemini API key missing. Set GEMINI_API_KEY in .env]");
@@ -44,7 +72,7 @@ async function summarizeWithGemini(text) {
     ) {
       return data.candidates[0].content.parts.map((p) => p.text).join(" ");
     } else {
-      return "[No summary returned from Gemini API]";
+      return null;
     }
   } catch (err) {
     return `[Gemini API error: ${err.message}]`;
