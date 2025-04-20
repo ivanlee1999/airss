@@ -49,7 +49,7 @@ async function _summarizeWithGemini(text) {
             {
               parts: [
                 {
-                  text: `Summarize the following article :\n\n${text}`,
+                  text: `Summarize the following article in a clear, readable way. Use bullet points for lists or key information when appropriate. Focus on clarity and conciseness.\n\n${text}`,
                 },
               ],
             },
