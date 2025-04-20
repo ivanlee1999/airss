@@ -1,8 +1,9 @@
-# Dockerfile for API and worker
+# Multi-service Dockerfile for airss (API, UI, Worker)
 FROM node:18
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+COPY ui/package*.json ./ui/
+RUN npm install && cd ui && npm install && cd ..
 COPY . .
-EXPOSE 3001
-CMD ["node", "api/server.js"]
+EXPOSE 3000 3001
+# No default CMD: docker-compose will set it per service
