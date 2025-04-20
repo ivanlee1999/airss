@@ -169,10 +169,13 @@ apiApp.get('/articles-rss', async (req, res) => {
       return pstDate >= start && pstDate < end;
     });
     if (bucket.length > 0) {
-      const htmlList = bucket.map(a => {
+      const htmlList = bucket.map((a, idx) => {
         const safeSummary = a.summary ? a.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-        return `<li><a href="${a.link}" target="_blank">${a.title || a.link}</a>: ${safeSummary}</li>`;
-      }).join('\n');
+        let item = `<li><a href="${a.link}" target="_blank">${a.title || a.link}</a>: ${safeSummary}</li>`;
+        // Add <hr> after each item except the last
+        if (idx < bucket.length - 1) item += '<hr style="border:1px solid #ccc; margin:1em 0;">';
+        return item;
+      }).join('');
       feed.addItem({
         title: `Digest for ${label} PST (${start.toLocaleDateString('en-US')})`,
         id: `${start.toISOString()}_${label}`,
