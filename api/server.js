@@ -107,40 +107,46 @@ apiApp.get('/articles-rss', async (req, res) => {
   // Get current PST time
   const nowUtc = new Date();
   const nowPst = toPST(nowUtc);
-  const currentHour = nowPst.getHours();
-  const currentMin = nowPst.getMinutes();
 
-  // Decide which intervals to include based on current PST time
-  let included = [];
-  if (currentHour >= 12) included.push('21:00-12:00');
-  if (currentHour >= 17) included.push('12:00-17:00');
-  if (currentHour >= 21) included.push('17:00-21:00');
-
-  // Build interval boundaries for today
-  function getIntervalBounds(label) {
-    const today = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
-    if (label === '21:00-12:00') {
+  // Generate previous 50 intervals (going back in time)
+  let intervalList = [];
+  let refDate = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
+  let intervalIdx = 0;
+  for (let i = 0; i < 50; i++) {
+    // Pick interval from the end of today backwards
+    const intervalType = ((intervals.length + ((intervalIdx % intervals.length))) % intervals.length);
+    const interval = intervals[(intervals.length - 1 - intervalType)];
+    let start, end, displayDate;
+    if (interval.label === '21:00-12:00') {
       // 21:00 prev day to 12:00 today
-      const start = new Date(today);
+      end = new Date(refDate);
+      end.setHours(12, 0, 0, 0);
+      start = new Date(refDate);
       start.setDate(start.getDate() - 1);
       start.setHours(21, 0, 0, 0);
-      const end = new Date(today);
-      end.setHours(12, 0, 0, 0);
-      return { start, end };
-    } else if (label === '12:00-17:00') {
-      const start = new Date(today);
-      start.setHours(12, 0, 0, 0);
-      const end = new Date(today);
+      displayDate = new Date(end);
+    } else if (interval.label === '12:00-17:00') {
+      end = new Date(refDate);
       end.setHours(17, 0, 0, 0);
-      return { start, end };
-    } else if (label === '17:00-21:00') {
-      const start = new Date(today);
-      start.setHours(17, 0, 0, 0);
-      const end = new Date(today);
+      start = new Date(refDate);
+      start.setHours(12, 0, 0, 0);
+      displayDate = new Date(end);
+    } else if (interval.label === '17:00-21:00') {
+      end = new Date(refDate);
       end.setHours(21, 0, 0, 0);
-      return { start, end };
+      start = new Date(refDate);
+      start.setHours(17, 0, 0, 0);
+      displayDate = new Date(end);
+      // Move refDate to previous day after finishing 17:00-21:00
+      refDate.setDate(refDate.getDate() - 1);
     }
-    return null;
+    intervalList.push({
+      label: interval.label,
+      start,
+      end,
+      displayDate
+    });
+    intervalIdx++;
   }
 
   const feed = new Feed({
@@ -155,8 +161,7 @@ apiApp.get('/articles-rss', async (req, res) => {
     author: { name: 'RSS Publisher' },
   });
 
-  included.forEach(label => {
-    const { start, end } = getIntervalBounds(label);
+  intervalList.forEach(({ label, start, end, displayDate }) => {
     // Bucket articles by interval
     const bucket = articles.filter(article => {
       if (!article.pubDate) return false;
