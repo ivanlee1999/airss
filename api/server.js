@@ -48,7 +48,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${API_PORT}`;
 const UI_BASE_URL = process.env.UI_BASE_URL || 'http://localhost:3000';
 
 // Publish subscriptions as an RSS feed
@@ -134,7 +134,7 @@ apiApp.get('/articles-rss', async (req, res) => {
 });
 
 apiApp.listen(API_PORT, () => {
-  console.log(`API running at http://localhost:${API_PORT}`);
+  console.log(`API running at ${process.env.API_BASE_URL || 'http://localhost:' + API_PORT}`);
 });
 
 

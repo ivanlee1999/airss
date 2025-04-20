@@ -11,5 +11,5 @@ const UI_PORT = 3000;
 uiApp.use(express.static(join(__dirname, '../public')));
 
 uiApp.listen(UI_PORT, () => {
-  console.log(`UI running at http://localhost:${UI_PORT}`);
+  console.log(`UI running at ${process.env.UI_BASE_URL || 'http://localhost:' + UI_PORT}`);
 });

@@ -27,12 +27,12 @@
   <script>
     // Inject environment variables from <meta> tags or server-side rendering
     window.ENV = window.ENV || {};
-    window.ENV.API_BASE_URL = window.ENV.API_BASE_URL || (document.querySelector('meta[name="api-base-url"]')?.content || 'http://10.0.0.195:3001');
-    window.ENV.UI_BASE_URL = window.ENV.UI_BASE_URL || (document.querySelector('meta[name="ui-base-url"]')?.content || 'http://localhost:3000');
+    window.ENV.API_BASE_URL = window.ENV.API_BASE_URL || (document.querySelector('meta[name="api-base-url"]')?.content || 'https://airss-server.seinjian.com');
+    window.ENV.UI_BASE_URL = window.ENV.UI_BASE_URL || (document.querySelector('meta[name="ui-base-url"]')?.content || 'https://airss-ui.seinjian.com');
   </script>
   <script>
     // Use the API_BASE_URL from window.ENV
-    const API_BASE = window.ENV && window.ENV.API_BASE_URL ? window.ENV.API_BASE_URL : 'http://localhost:3001';
+    const API_BASE = window.ENV && window.ENV.API_BASE_URL ? window.ENV.API_BASE_URL : 'https://airss-server.seinjian.com';
     async function fetchSubscriptions() {
       const res = await fetch(`${API_BASE}/subscriptions`);
       const data = await res.json();
