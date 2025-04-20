@@ -8,7 +8,7 @@ import { startFeedJob, fetchAllFeeds } from './feeds.js';
 const apiApp = express();
 const API_PORT = 3001;
 
-// Enable CORS for all origins (or restrict to http://localhost:3000 if you prefer)
+// Enable CORS for all origins (or restrict to UI_BASE_URL if you prefer)
 apiApp.use(cors());
 
 apiApp.use(express.json());
@@ -48,8 +48,10 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const API_BASE_URL = process.env.API_BASE_URL || `http://localhost:${API_PORT}`;
-const UI_BASE_URL = process.env.UI_BASE_URL || 'http://localhost:3000';
+if (!process.env.API_BASE_URL) throw new Error('API_BASE_URL env variable is required');
+const API_BASE_URL = process.env.API_BASE_URL;
+if (!process.env.UI_BASE_URL) throw new Error('UI_BASE_URL env variable is required');
+const UI_BASE_URL = process.env.UI_BASE_URL;
 
 // Publish subscriptions as an RSS feed
 apiApp.get('/subscriptions-rss', async (req, res) => {
@@ -193,7 +195,7 @@ apiApp.get('/articles-rss', async (req, res) => {
 });
 
 apiApp.listen(API_PORT, () => {
-  console.log(`API running at ${process.env.API_BASE_URL || 'http://localhost:' + API_PORT}`);
+  console.log(`API running at ${process.env.API_BASE_URL}`);
 });
 
 

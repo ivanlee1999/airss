@@ -27,12 +27,16 @@
   <script>
     // Inject environment variables from <meta> tags or server-side rendering
     window.ENV = window.ENV || {};
-    window.ENV.API_BASE_URL = window.ENV.API_BASE_URL || (document.querySelector('meta[name="api-base-url"]')?.content || 'https://airss-server.seinjian.com');
-    window.ENV.UI_BASE_URL = window.ENV.UI_BASE_URL || (document.querySelector('meta[name="ui-base-url"]')?.content || 'https://airss-ui.seinjian.com');
+    window.ENV.API_BASE_URL = window.ENV.API_BASE_URL || document.querySelector('meta[name="api-base-url"]')?.content;
+    window.ENV.UI_BASE_URL = window.ENV.UI_BASE_URL || document.querySelector('meta[name="ui-base-url"]')?.content;
+    if (!window.ENV.API_BASE_URL || !window.ENV.UI_BASE_URL) {
+      alert('API_BASE_URL and/or UI_BASE_URL is not set!');
+      throw new Error('API_BASE_URL and/or UI_BASE_URL is not set!');
+    }
   </script>
   <script>
     // Use the API_BASE_URL from window.ENV
-    const API_BASE = window.ENV && window.ENV.API_BASE_URL ? window.ENV.API_BASE_URL : 'https://airss-server.seinjian.com';
+    const API_BASE = window.ENV && window.ENV.API_BASE_URL ? window.ENV.API_BASE_URL : (() => { throw new Error('API_BASE_URL is not set!'); })();
     async function fetchSubscriptions() {
       const res = await fetch(`${API_BASE}/subscriptions`);
       const data = await res.json();
