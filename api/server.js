@@ -82,7 +82,7 @@ apiApp.get('/subscriptions-rss', async (req, res) => {
   res.send(feed.rss2());
 });
 
-// Return an RSS feed where each item is a daily aggregation of article summaries and links
+// Return an RSS feed where each item is a time-bucketed aggregation of article summaries and links
 apiApp.get('/articles-rss', async (req, res) => {
   let articles = [];
   const { feedUrl } = req.query;
@@ -92,14 +92,56 @@ apiApp.get('/articles-rss', async (req, res) => {
     articles = await getAllArticles();
   }
 
-  // Group articles by pubDate (YYYY-MM-DD)
-  const byDay = {};
-  articles.forEach(article => {
-    if (!article.pubDate) return;
-    const dateStr = new Date(article.pubDate).toISOString().slice(0, 10);
-    if (!byDay[dateStr]) byDay[dateStr] = [];
-    byDay[dateStr].push(article);
-  });
+  // Helper to convert date to PST (America/Los_Angeles)
+  function toPST(date) {
+    return new Date(date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  }
+
+  // Define intervals in PST
+  const intervals = [
+    { label: '21:00-12:00', startHour: 21, startMin: 0, endHour: 12, endMin: 0 },
+    { label: '12:00-17:00', startHour: 12, startMin: 0, endHour: 17, endMin: 0 },
+    { label: '17:00-21:00', startHour: 17, startMin: 0, endHour: 21, endMin: 0 }
+  ];
+
+  // Get current PST time
+  const nowUtc = new Date();
+  const nowPst = toPST(nowUtc);
+  const currentHour = nowPst.getHours();
+  const currentMin = nowPst.getMinutes();
+
+  // Decide which intervals to include based on current PST time
+  let included = [];
+  if (currentHour >= 12) included.push('21:00-12:00');
+  if (currentHour >= 17) included.push('12:00-17:00');
+  if (currentHour >= 21) included.push('17:00-21:00');
+
+  // Build interval boundaries for today
+  function getIntervalBounds(label) {
+    const today = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
+    if (label === '21:00-12:00') {
+      // 21:00 prev day to 12:00 today
+      const start = new Date(today);
+      start.setDate(start.getDate() - 1);
+      start.setHours(21, 0, 0, 0);
+      const end = new Date(today);
+      end.setHours(12, 0, 0, 0);
+      return { start, end };
+    } else if (label === '12:00-17:00') {
+      const start = new Date(today);
+      start.setHours(12, 0, 0, 0);
+      const end = new Date(today);
+      end.setHours(17, 0, 0, 0);
+      return { start, end };
+    } else if (label === '17:00-21:00') {
+      const start = new Date(today);
+      start.setHours(17, 0, 0, 0);
+      const end = new Date(today);
+      end.setHours(21, 0, 0, 0);
+      return { start, end };
+    }
+    return null;
+  }
 
   const feed = new Feed({
     title: feedUrl ? `Aggregated Daily Articles for ${feedUrl}` : 'Aggregated Daily Articles',
@@ -113,19 +155,28 @@ apiApp.get('/articles-rss', async (req, res) => {
     author: { name: 'RSS Publisher' },
   });
 
-  Object.entries(byDay).forEach(([date, articles]) => {
-    const htmlList = articles.map(a => {
-      const safeSummary = a.summary ? a.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-      return `<li><a href="${a.link}" target="_blank">${a.title || a.link}</a>: ${safeSummary}</li>`;
-    }).join('\n');
-    feed.addItem({
-      title: `Digest for ${date}`,
-      id: date,
-      link: `${API_BASE_URL}/articles-rss?date=${date}`,
-      description: `Daily digest for ${date}`,
-      content: `<ul>${htmlList}</ul>`,
-      date: new Date(date)
+  included.forEach(label => {
+    const { start, end } = getIntervalBounds(label);
+    // Bucket articles by interval
+    const bucket = articles.filter(article => {
+      if (!article.pubDate) return false;
+      const pstDate = toPST(new Date(article.pubDate));
+      return pstDate >= start && pstDate < end;
     });
+    if (bucket.length > 0) {
+      const htmlList = bucket.map(a => {
+        const safeSummary = a.summary ? a.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+        return `<li><a href="${a.link}" target="_blank">${a.title || a.link}</a>: ${safeSummary}</li>`;
+      }).join('\n');
+      feed.addItem({
+        title: `Digest for ${label} PST (${start.toLocaleDateString('en-US')})`,
+        id: `${start.toISOString()}_${label}`,
+        link: `${API_BASE_URL}/articles-rss?interval=${encodeURIComponent(label)}&date=${start.toISOString()}`,
+        description: `Articles from ${start.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} to ${end.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST`,
+        content: `<ul>${htmlList}</ul>`,
+        date: end
+      });
+    }
   });
 
   res.type('application/rss+xml');
