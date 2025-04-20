@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  db:
+    image: mongo:7
+    container_name: airss-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: airss
+
+  api:
+    build:
+      context: .
+    container_name: airss-api
+    restart: always
+    command: node api/server.js
+    volumes:
+      - .:/app
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_URI=mongodb://db:27017/airss
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - API_BASE_URL=http://localhost:3001
+      - UI_BASE_URL=http://localhost:3000
+    depends_on:
+      - db
+
+  worker:
+    build:
+      context: .
+    container_name: airss-worker
+    restart: always
+    command: node api/rss_worker.js
+    volumes:
+      - .:/app
+    environment:
+      - DB_URI=mongodb://db:27017/airss
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - API_BASE_URL=http://localhost:3001
+      - UI_BASE_URL=http://localhost:3000
+    depends_on:
+      - db
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    container_name: airss-ui
+    restart: always
+    command: node server.js
+    ports:
+      - "3000:3000"
+    environment:
+      - API_BASE_URL=http://api:3001
+    depends_on:
+      - api
+
+volumes:
+  mongodata:
