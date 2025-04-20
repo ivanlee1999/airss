@@ -9,7 +9,8 @@ const apiApp = express();
 const API_PORT = 3001;
 
 // Enable CORS for all origins (or restrict to http://localhost:3000 if you prefer)
-apiApp.use(cors({ origin: "http://localhost:3000" }));
+apiApp.use(cors());
+
 apiApp.use(express.json());
 
 import Parser from 'rss-parser';
