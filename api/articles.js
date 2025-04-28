@@ -1,6 +1,6 @@
 // Article persistence logic: load/save/upsert articles
 import { getFeedNameByUrl } from './subscriptions.js';
-import { connectDB, getDB } from './db.js'; // Uses DB_URI from .env
+import { connectDB } from './db.js'; // Uses DB_URI from .env
 
 // Upsert an article by link
 export async function upsertArticle(article) {

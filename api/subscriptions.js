@@ -1,6 +1,6 @@
 // Subscription logic: MongoDB store and subscribeToFeed
 
-import { connectDB, getDB } from './db.js'; // Uses DB_URI from .env
+import { connectDB } from './db.js'; // Uses DB_URI from .env
 
 // Subscribe to a feed (insert if not present)
 export async function subscribeToFeed(url, name) {
