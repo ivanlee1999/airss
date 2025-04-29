@@ -157,7 +157,7 @@ apiApp.get('/articles-rss', async (req, res) => {
   }
 
   const newFeed = new Feed({
-    title: feed ? `Aggregated Daily Articles for ${feed.name}` : 'Aggregated Daily Articles',
+    title: feed ? `${feed.name} Summary` : 'RSS Summary',
     description: feed ? `Daily RSS article digests for ${feed.name}` : 'Daily digests of all articles from all feeds',
     id: `${API_BASE_URL}/articles-rss`,
     link: `${API_BASE_URL}/articles-rss`,
