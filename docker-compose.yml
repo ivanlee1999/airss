@@ -13,7 +13,7 @@ services:
       MONGO_INITDB_DATABASE: airss
 
   api:
-    image: airss-app:latest
+    image: airss:latest
     container_name: airss-api
     restart: always
     command: node api/server.js
@@ -22,13 +22,13 @@ services:
     environment:
       - DB_URI=mongodb://db:27017/airss
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - API_BASE_URL=http://localhost:3001
+      - API_BASE_URL=https://airss-server.seinjian.com
       - UI_BASE_URL=http://localhost:3000
     depends_on:
       - db
 
   ui:
-    image: airss-app:latest
+    image: airss:latest
     container_name: airss-ui
     restart: always
     command: node ui/server.js
@@ -37,20 +37,20 @@ services:
     environment:
       - DB_URI=mongodb://db:27017/airss
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - API_BASE_URL=http://localhost:3001
+      - API_BASE_URL=https://airss-server.seinjian.com
       - UI_BASE_URL=http://localhost:3000
     depends_on:
       - api
 
   worker:
-    image: airss-app:latest
+    image: airss:latest
     container_name: airss-worker
     restart: always
     command: node api/rss_worker.js
     environment:
       - DB_URI=mongodb://db:27017/airss
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - API_BASE_URL=http://localhost:3001
+      - API_BASE_URL=https://airss-server.seinjian.com
       - UI_BASE_URL=http://localhost:3000
     depends_on:
       - api
