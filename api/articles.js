@@ -6,10 +6,6 @@ import { connectDB } from './db.js'; // Uses DB_URI from .env
 export async function upsertArticle(article) {
   const db = await connectDB();
   // Add feedName from subscriptions if not present or outdated
-  if (article.feedUrl) {
-    const feedName = getFeedNameByUrl(article.feedUrl);
-    if (feedName) article.feedName = feedName;
-  }
   await db.collection('articles').updateOne(
     { link: article.link },
     { $set: article },
