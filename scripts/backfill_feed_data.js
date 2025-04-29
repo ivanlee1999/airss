@@ -1,5 +1,6 @@
 // Backfill script to update articles with feedId and feedName
-import { MongoClient, ObjectId } from 'mongodb';
+/* global process */  // Tell ESLint that process is a global variable
+import { MongoClient } from 'mongodb';
 
 // Function to connect to MongoDB
 async function connectToMongoDB(mongoUrl) {
