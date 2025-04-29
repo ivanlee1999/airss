@@ -45,7 +45,7 @@
       data.subscriptions.forEach(sub => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        const rssUrl = `${window.ENV.API_BASE_URL}/articles-rss?feedUrl=${encodeURIComponent(sub.url)}`;
+        const rssUrl = `${window.ENV.API_BASE_URL}/articles-rss?feedId=${encodeURIComponent(sub._id)}`;
         a.href = rssUrl;
         a.textContent = `${sub.name} (${sub.url})`;
         a.target = '_blank';
