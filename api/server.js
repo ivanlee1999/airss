@@ -190,9 +190,6 @@ apiApp.get('/articles-rss', async (req, res) => {
       }
       const pstDate = toPST(new Date(article.pubDate));
       const isInInterval = pstDate >= start && pstDate < end;
-      if (isInInterval) {
-        console.log(`Article in interval ${label}: ${article.id}, pubDate: ${article.pubDate}, pstDate: ${pstDate.toISOString()}`);
-      }
       return isInInterval;
     });
     console.log(`Interval ${label} (${start.toISOString()} - ${end.toISOString()}) has ${bucket.length} articles`);
