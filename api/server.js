@@ -16,8 +16,8 @@ apiApp.use(express.json());
 import Parser from 'rss-parser';
 const rssParser = new Parser();
 
-import { getAllSubscriptions, subscribeToFeed, getFeedNameByUrl } from './subscriptions.js';
-import { getAllArticles, getArticlesByFeedUrl, upsertArticle } from './articles.js';
+import { getAllSubscriptions, subscribeToFeed } from './subscriptions.js';
+import { getAllArticles, getArticlesByFeedId, getFeedById } from './articles.js';
 
 apiApp.get("/subscriptions", async (req, res) => {
   const subscriptions = await getAllSubscriptions();
@@ -82,18 +82,19 @@ apiApp.get('/subscriptions-rss', async (req, res) => {
 
   res.type('application/rss+xml');
   res.set('Content-Type', 'application/rss+xml; charset=utf-8');
-  res.send(feed.rss2());
+  res.send(newFeed.rss2());
 });
 
 // Return an RSS feed where each item is a time-bucketed aggregation of article summaries and links
 apiApp.get('/articles-rss', async (req, res) => {
   let articles = [];
-  const { feedUrl } = req.query;
-  if (feedUrl) {
-    articles = await getArticlesByFeedUrl(feedUrl);
+  const { feedId } = req.query;
+  if (feedId) {
+    articles = await getArticlesByFeedId(feedId);
   } else {
     articles = await getAllArticles();
   }
+  const feed = await getFeedById(feedId);
 
   // Helper to convert date to PST (America/Los_Angeles)
   function toPST(date) {
@@ -152,9 +153,9 @@ apiApp.get('/articles-rss', async (req, res) => {
     intervalIdx++;
   }
 
-  const feed = new Feed({
-    title: feedUrl ? `Aggregated Daily Articles for ${feedUrl}` : 'Aggregated Daily Articles',
-    description: feedUrl ? `Daily RSS article digests for ${feedUrl}` : 'Daily digests of all articles from all feeds',
+  const newFeed = new Feed({
+    title: feed ? `Aggregated Daily Articles for ${feed.name}` : 'Aggregated Daily Articles',
+    description: feed ? `Daily RSS article digests for ${feed.name}` : 'Daily digests of all articles from all feeds',
     id: `${API_BASE_URL}/articles-rss`,
     link: `${API_BASE_URL}/articles-rss`,
     language: 'en',
@@ -179,7 +180,7 @@ apiApp.get('/articles-rss', async (req, res) => {
         if (idx < bucket.length - 1) item += '<hr style="border:1px solid #ccc; margin:1em 0;">';
         return item;
       }).join('');
-      feed.addItem({
+      newFeed.addItem({
         title: `Digest for ${label} PST (${start.toLocaleDateString('en-US')})`,
         id: `${start.toISOString()}_${label}`,
         link: `${API_BASE_URL}/articles-rss?interval=${encodeURIComponent(label)}&date=${start.toISOString()}`,
@@ -192,7 +193,7 @@ apiApp.get('/articles-rss', async (req, res) => {
 
   res.type('application/rss+xml');
   res.set('Content-Type', 'application/rss+xml; charset=utf-8');
-  res.send(feed.rss2());
+  res.send(newFeed.rss2());
 });
 
 apiApp.listen(API_PORT, () => {
