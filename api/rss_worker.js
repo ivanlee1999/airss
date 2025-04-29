@@ -4,8 +4,8 @@ dotenv.config();
 
 import { startFeedJob, startSummarizeJob } from './feeds.js';
 
-const FEED_FREQ = process.env.FEED_FETCH_FREQ_MS ? parseInt(process.env.FEED_FETCH_FREQ_MS) : 1 * 30 * 1000; // 5 min default
-const SUMMARIZE_FREQ = process.env.SUMMARIZE_FREQ_MS ? parseInt(process.env.SUMMARIZE_FREQ_MS) : 1 * 60 * 1000; // 1 min default
+const FEED_FREQ = process.env.FEED_FETCH_FREQ_MS ? parseInt(process.env.FEED_FETCH_FREQ_MS) : 10 * 60 * 1000; // 5 min default
+const SUMMARIZE_FREQ = process.env.SUMMARIZE_FREQ_MS ? parseInt(process.env.SUMMARIZE_FREQ_MS) : 10 * 60 * 1000; // 1 min default
 console.log('Running RSS fetch job immediately');
 import { fetchAllFeeds, summarizeAllArticles } from './feeds.js';
 fetchAllFeeds();
