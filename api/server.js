@@ -112,45 +112,48 @@ apiApp.get('/articles-rss', async (req, res) => {
   const nowUtc = new Date();
   const nowPst = toPST(nowUtc);
 
-  // Generate previous 50 intervals (going back in time)
+  // Generate intervals for the past 10 days
   let intervalList = [];
   let refDate = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
-  let intervalIdx = 0;
-  for (let i = 0; i < 50; i++) {
-    // Pick interval from the end of today backwards
-    const intervalType = ((intervals.length + ((intervalIdx % intervals.length))) % intervals.length);
-    const interval = intervals[(intervals.length - 1 - intervalType)];
-    let start, end, displayDate;
-    if (interval.label === '21:00-12:00') {
-      // 21:00 prev day to 12:00 today
-      end = new Date(refDate);
-      end.setHours(12, 0, 0, 0);
-      start = new Date(refDate);
-      start.setDate(start.getDate() - 1);
-      start.setHours(21, 0, 0, 0);
-      displayDate = new Date(end);
-    } else if (interval.label === '12:00-17:00') {
-      end = new Date(refDate);
-      end.setHours(17, 0, 0, 0);
-      start = new Date(refDate);
-      start.setHours(12, 0, 0, 0);
-      displayDate = new Date(end);
-    } else if (interval.label === '17:00-21:00') {
-      end = new Date(refDate);
-      end.setHours(21, 0, 0, 0);
-      start = new Date(refDate);
-      start.setHours(17, 0, 0, 0);
-      displayDate = new Date(end);
-      // Move refDate to previous day after finishing 17:00-21:00
-      refDate.setDate(refDate.getDate() - 1);
+  
+  // Generate intervals for today and the past 9 days (10 days total)
+  for (let dayOffset = 0; dayOffset < 10; dayOffset++) {
+    const currentDate = new Date(refDate);
+    currentDate.setDate(currentDate.getDate() - dayOffset);
+    
+    // Add each interval type for this day
+    for (const interval of intervals) {
+      let start, end, displayDate;
+      
+      if (interval.label === '21:00-12:00') {
+        // Special case for overnight interval
+        end = new Date(currentDate);
+        end.setHours(12, 0, 0, 0);
+        start = new Date(currentDate);
+        start.setDate(start.getDate() - 1);  // Previous day
+        start.setHours(21, 0, 0, 0);
+        displayDate = new Date(end);
+      } else if (interval.label === '12:00-17:00') {
+        end = new Date(currentDate);
+        end.setHours(17, 0, 0, 0);
+        start = new Date(currentDate);
+        start.setHours(12, 0, 0, 0);
+        displayDate = new Date(end);
+      } else if (interval.label === '17:00-21:00') {
+        end = new Date(currentDate);
+        end.setHours(21, 0, 0, 0);
+        start = new Date(currentDate);
+        start.setHours(17, 0, 0, 0);
+        displayDate = new Date(end);
+      }
+      
+      intervalList.push({
+        label: interval.label,
+        start,
+        end,
+        displayDate
+      });
     }
-    intervalList.push({
-      label: interval.label,
-      start,
-      end,
-      displayDate
-    });
-    intervalIdx++;
   }
 
   const newFeed = new Feed({
