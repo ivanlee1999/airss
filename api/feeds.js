@@ -39,7 +39,8 @@ if (!existing) {
     content: articleData.content,
     summary: null,
     sentToGemini: false,
-    processedAt: new Date().toISOString()
+    processedAt: new Date().toISOString(),
+    feedName: sub.name
   });
 } else {
   console.log(`      [Article already exists, skipping insert]: ${item.link}`);
