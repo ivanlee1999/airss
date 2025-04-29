@@ -9,7 +9,10 @@ const apiApp = express();
 const API_PORT = 3001;
 
 // Enable CORS for all origins (or restrict to UI_BASE_URL if you prefer)
+// enable all cors
 apiApp.use(cors());
+// Explicitly handle all OPTIONS preflight requests
+apiApp.options('*', cors());
 
 apiApp.use(express.json());
 
