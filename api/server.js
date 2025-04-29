@@ -36,6 +36,7 @@ apiApp.post("/subscribe", async (req, res) => {
       feedName = feed.title || url;
     } catch (e) {
       feedName = url;
+      return res.status(400).json({ error: "Failed to parse RSS feed" });
     }
   }
   await subscribeToFeed(url, feedName);
