@@ -33,6 +33,7 @@ if (!existing) {
   await db.collection('articles').insertOne({
     id: item.link,
     feedUrl: sub.url,
+    feedId: sub._id,
     title: item.title,
     link: item.link,
     pubDate: item.pubDate || new Date().toISOString(),
