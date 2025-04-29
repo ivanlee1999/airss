@@ -165,13 +165,34 @@ apiApp.get('/articles-rss', async (req, res) => {
     author: { name: 'RSS Publisher' },
   });
 
+  // Debug: Print out all articles
+  console.log(`Total articles found: ${articles.length}`);
+  if (articles.length > 0) {
+    console.log(`Sample article pubDate: ${articles[0].pubDate}`);
+  }
+
+  // Debug: Print out interval information
+  console.log(`Generated ${intervalList.length} intervals`);
+  if (intervalList.length > 0) {
+    const sample = intervalList[0];
+    console.log(`Sample interval: ${sample.label}, start: ${sample.start.toISOString()}, end: ${sample.end.toISOString()}`);
+  }
+
   intervalList.forEach(({ label, start, end, displayDate }) => {
     // Bucket articles by interval
     const bucket = articles.filter(article => {
-      if (!article.pubDate) return false;
+      if (!article.pubDate) {
+        console.log(`Article without pubDate: ${article.id}`);
+        return false;
+      }
       const pstDate = toPST(new Date(article.pubDate));
-      return pstDate >= start && pstDate < end;
+      const isInInterval = pstDate >= start && pstDate < end;
+      if (isInInterval) {
+        console.log(`Article in interval ${label}: ${article.id}, pubDate: ${article.pubDate}, pstDate: ${pstDate.toISOString()}`);
+      }
+      return isInInterval;
     });
+    console.log(`Interval ${label} (${start.toISOString()} - ${end.toISOString()}) has ${bucket.length} articles`);
     if (bucket.length > 0) {
       const htmlList = bucket.map((a, idx) => {
         const safeSummary = a.summary ? a.summary.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
