@@ -120,7 +120,7 @@ apiApp.get('/articles-rss', async (req, res) => {
   let refDate = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
   
   // Generate intervals for today and the past 9 days (10 days total)
-  for (let dayOffset = 0; dayOffset < 10; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
     const currentDate = new Date(refDate);
     currentDate.setDate(currentDate.getDate() - dayOffset);
     
