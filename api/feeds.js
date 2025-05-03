@@ -22,32 +22,35 @@ async function fetchAllFeeds() {
         console.log(`  [${idx + 1}] ${item.title} - ${item.link}`);
         if (item.link) {
           try {
-            const articleData = await extractArticle(item.link);
-            if (articleData && articleData.content) {
-              console.log(
-                `      [Full Article Extracted]:\n${articleData.content.substring(0, 1000)}...`
-              );
-              // Only create if not exists
-const existing = await db.collection('articles').findOne({ link: item.link });
-if (!existing) {
-  await db.collection('articles').insertOne({
-    id: item.link,
-    feedUrl: sub.url,
-    feedId: sub._id,
-    title: item.title,
-    link: item.link,
-    pubDate: item.pubDate || new Date().toISOString(),
-    content: articleData.content,
-    summary: null,
-    sentToGemini: false,
-    processedAt: new Date().toISOString(),
-    feedName: sub.name
-  });
-} else {
-  console.log(`      [Article already exists, skipping insert]: ${item.link}`);
-}
+            // First check if the article already exists
+            const existing = await db.collection('articles').findOne({ link: item.link });
+            
+            if (!existing) {
+              // Only extract article content if it doesn't exist yet
+              const articleData = await extractArticle(item.link);
+              if (articleData && articleData.content) {
+                console.log(
+                  `      [Full Article Extracted]:\n${articleData.content.substring(0, 1000)}...`
+                );
+                
+                await db.collection('articles').insertOne({
+                  id: item.link,
+                  feedUrl: sub.url,
+                  feedId: sub._id,
+                  title: item.title,
+                  link: item.link,
+                  pubDate: item.pubDate || new Date().toISOString(),
+                  content: articleData.content,
+                  summary: null,
+                  sentToGemini: false,
+                  processedAt: new Date().toISOString(),
+                  feedName: sub.name
+                });
+              } else {
+                console.log("      [No full article content extracted]");
+              }
             } else {
-              console.log("      [No full article content extracted]");
+              console.log(`      [Article already exists, skipping extraction and insert]: ${item.link}`);
             }
           } catch (err) {
             console.log(
