@@ -44,6 +44,10 @@
       ul.innerHTML = '';
       data.subscriptions.forEach(sub => {
         const li = document.createElement('li');
+        li.dataset.id = sub._id;
+        li.dataset.name = sub.name;
+        li.dataset.url = sub.url;
+        
         const a = document.createElement('a');
         const rssUrl = `${window.ENV.API_BASE_URL}/articles-rss?feedId=${encodeURIComponent(sub._id)}`;
         a.href = rssUrl;
@@ -66,6 +70,24 @@
           }
         };
         li.appendChild(copyBtn);
+        
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.style.marginLeft = '8px';
+        editBtn.style.backgroundColor = '#3498db';
+        editBtn.style.color = 'white';
+        editBtn.style.border = 'none';
+        editBtn.style.padding = '4px 8px';
+        editBtn.style.borderRadius = '4px';
+        editBtn.style.cursor = 'pointer';
+        editBtn.onclick = () => {
+          const newName = prompt('Enter new name for this subscription:', sub.name);
+          if (newName && newName !== sub.name) {
+            updateSubscriptionName(sub._id, newName);
+          }
+        };
+        li.appendChild(editBtn);
         
         // Delete button
         const deleteBtn = document.createElement('button');
@@ -101,6 +123,28 @@
         ul.appendChild(li);
       });
     }
+    // Function to update subscription name
+    async function updateSubscriptionName(id, newName) {
+      document.getElementById('status').textContent = '';
+      document.getElementById('error').textContent = '';
+      try {
+        const res = await fetch(`${API_BASE}/subscription/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('status').textContent = data.message;
+          fetchSubscriptions();
+        } else {
+          document.getElementById('error').textContent = data.error || data.message;
+        }
+      } catch (err) {
+        document.getElementById('error').textContent = 'Failed to update subscription name.';
+      }
+    }
+    
     document.getElementById('subscribe-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       document.getElementById('status').textContent = '';
