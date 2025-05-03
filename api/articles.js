@@ -61,3 +61,22 @@ export async function getFeedById(feedId) {
   
   return db.collection('subscriptions').findOne(query);
 }
+
+// Delete articles by feed ID
+export async function deleteArticlesByFeedId(feedId) {
+  const db = await connectDB();
+  let query = { feedId };
+  
+  // Try to convert feedId to ObjectId if it's a valid ObjectId string
+  try {
+    const { ObjectId } = await import('mongodb');
+    if (ObjectId.isValid(feedId)) {
+      query = { feedId: new ObjectId(feedId) };
+    }
+  } catch (error) {
+    console.error('Error converting feedId to ObjectId:', error);
+  }
+  
+  const result = await db.collection('articles').deleteMany(query);
+  return result.deletedCount;
+}
