@@ -19,7 +19,7 @@ apiApp.use(express.json());
 import Parser from 'rss-parser';
 const rssParser = new Parser();
 
-import { getAllSubscriptions, subscribeToFeed, deleteSubscription } from './subscriptions.js';
+import { getAllSubscriptions, subscribeToFeed, deleteSubscription, updateSubscriptionName } from './subscriptions.js';
 import { getAllArticles, getArticlesByFeedId, getFeedById, deleteArticlesByFeedId } from './articles.js';
 
 apiApp.get("/subscriptions", async (req, res) => {
@@ -70,6 +70,31 @@ apiApp.delete("/subscription/:id", async (req, res) => {
   } catch (error) {
     console.error("Error deleting subscription:", error);
     res.status(500).json({ error: "Failed to delete subscription" });
+  }
+});
+
+// Update subscription name
+apiApp.patch("/subscription/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  
+  if (!id) {
+    return res.status(400).json({ error: "Missing subscription ID" });
+  }
+  if (!name) {
+    return res.status(400).json({ error: "Missing subscription name" });
+  }
+  
+  try {
+    const updated = await updateSubscriptionName(id, name);
+    if (updated) {
+      res.json({ message: "Subscription name updated successfully" });
+    } else {
+      res.status(404).json({ error: "Subscription not found" });
+    }
+  } catch (error) {
+    console.error("Error updating subscription name:", error);
+    res.status(500).json({ error: "Failed to update subscription name" });
   }
 });
 
