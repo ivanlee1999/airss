@@ -224,7 +224,8 @@ apiApp.get('/articles-rss', async (req, res) => {
     }
   }
 
-  const newFeed = new Feed({
+  // Create feed options object
+  const feedOptions = {
     title: feed ? `${feed.name} Summary` : 'RSS Summary',
     description: feed ? `Daily RSS article digests for ${feed.name}` : 'Daily digests of all articles from all feeds',
     id: `${API_BASE_URL}/articles-rss`,
@@ -234,8 +235,14 @@ apiApp.get('/articles-rss', async (req, res) => {
     generator: 'airss',
     feedLinks: { rss2: `${API_BASE_URL}/articles-rss` },
     author: { name: 'RSS Publisher' },
-    image: feedImage,
-  });
+  };
+  
+  // Only add image if it's a valid URL
+  if (feedImage && typeof feedImage === 'string' && feedImage.startsWith('http')) {
+    feedOptions.image = feedImage;
+  }
+  
+  const newFeed = new Feed(feedOptions);
 
   // Debug: Print out all articles
   console.log(`Total articles found: ${articles.length}`);
@@ -273,15 +280,22 @@ apiApp.get('/articles-rss', async (req, res) => {
       const feedNamePart = feed ? `${feed.name} ` : '';
       const timePeriod = `${label} PST (${start.toLocaleDateString('en-US')})`;
       
-      newFeed.addItem({
+      // Create item options object
+      const itemOptions = {
         title: `${feedNamePart}Summary ${timePeriod}`,
         id: `${start.toISOString()}_${label}`,
         link: `${API_BASE_URL}/articles-rss?interval=${encodeURIComponent(label)}&date=${start.toISOString()}`,
         description: `Articles from ${start.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} to ${end.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST`,
         content: `<ul>${htmlList}</ul>`,
-        date: end,
-        image: feedImage // Add the original feed's thumbnail to each item
-      });
+        date: end
+      };
+      
+      // Only add image if it's a valid URL
+      if (feedImage && typeof feedImage === 'string' && feedImage.startsWith('http')) {
+        itemOptions.image = feedImage;
+      }
+      
+      newFeed.addItem(itemOptions);
     }
   });
 
