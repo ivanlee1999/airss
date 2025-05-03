@@ -230,8 +230,11 @@ apiApp.get('/articles-rss', async (req, res) => {
         if (idx < bucket.length - 1) item += '<hr style="border:1px solid #ccc; margin:1em 0;">';
         return item;
       }).join('');
+      const feedNamePart = feed ? `${feed.name} ` : '';
+      const timePeriod = `${label} PST (${start.toLocaleDateString('en-US')})`;
+      
       newFeed.addItem({
-        title: `Digest for ${label} PST (${start.toLocaleDateString('en-US')})`,
+        title: `${feedNamePart}Summary ${timePeriod}`,
         id: `${start.toISOString()}_${label}`,
         link: `${API_BASE_URL}/articles-rss?interval=${encodeURIComponent(label)}&date=${start.toISOString()}`,
         description: `Articles from ${start.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} to ${end.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST`,
