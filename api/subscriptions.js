@@ -32,3 +32,13 @@ export async function deleteSubscription(id) {
   const result = await db.collection('subscriptions').deleteOne({ _id: new ObjectId(id) });
   return result.deletedCount > 0;
 }
+
+// Update a subscription's name by ID
+export async function updateSubscriptionName(id, newName) {
+  const db = await connectDB();
+  const result = await db.collection('subscriptions').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { name: newName } }
+  );
+  return result.matchedCount > 0;
+}
