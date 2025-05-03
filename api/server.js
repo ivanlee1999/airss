@@ -19,8 +19,8 @@ apiApp.use(express.json());
 import Parser from 'rss-parser';
 const rssParser = new Parser();
 
-import { getAllSubscriptions, subscribeToFeed } from './subscriptions.js';
-import { getAllArticles, getArticlesByFeedId, getFeedById } from './articles.js';
+import { getAllSubscriptions, subscribeToFeed, deleteSubscription } from './subscriptions.js';
+import { getAllArticles, getArticlesByFeedId, getFeedById, deleteArticlesByFeedId } from './articles.js';
 
 apiApp.get("/subscriptions", async (req, res) => {
   const subscriptions = await getAllSubscriptions();
@@ -45,6 +45,32 @@ apiApp.post("/subscribe", async (req, res) => {
   await subscribeToFeed(url, feedName);
   await fetchAllFeeds();
   res.json({ message: `Subscribed to ${feedName} (${url})` });
+});
+
+apiApp.delete("/subscription/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "Missing subscription ID" });
+  }
+  try {
+    // Delete associated articles first
+    const deletedArticlesCount = await deleteArticlesByFeedId(id);
+    console.log(`Deleted ${deletedArticlesCount} articles associated with subscription ${id}`);
+    
+    // Then delete the subscription
+    const deleted = await deleteSubscription(id);
+    if (deleted) {
+      res.json({ 
+        message: "Subscription deleted successfully", 
+        articlesDeleted: deletedArticlesCount 
+      });
+    } else {
+      res.status(404).json({ error: "Subscription not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting subscription:", error);
+    res.status(500).json({ error: "Failed to delete subscription" });
+  }
 });
 
 import { Feed } from 'feed';
