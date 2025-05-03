@@ -43,7 +43,7 @@ apiApp.post("/subscribe", async (req, res) => {
     }
   }
   await subscribeToFeed(url, feedName);
-  await fetchAllFeeds();
+  // await fetchAllFeeds();
   res.json({ message: `Subscribed to ${feedName} (${url})` });
 });
 
