@@ -66,6 +66,38 @@
           }
         };
         li.appendChild(copyBtn);
+        
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.style.marginLeft = '8px';
+        deleteBtn.style.backgroundColor = '#e74c3c';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.padding = '4px 8px';
+        deleteBtn.style.borderRadius = '4px';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.onclick = async () => {
+          if (confirm(`Are you sure you want to delete the subscription to ${sub.name}?`)) {
+            try {
+              const res = await fetch(`${API_BASE}/subscription/${sub._id}`, {
+                method: 'DELETE'
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const articlesMsg = data.articlesDeleted > 0 ? ` and ${data.articlesDeleted} associated articles` : '';
+                document.getElementById('status').textContent = `Subscription deleted successfully${articlesMsg}`;
+                fetchSubscriptions();
+              } else {
+                const data = await res.json();
+                document.getElementById('error').textContent = data.error || 'Failed to delete subscription';
+              }
+            } catch (err) {
+              document.getElementById('error').textContent = 'Failed to delete subscription';
+            }
+          }
+        };
+        li.appendChild(deleteBtn);
         ul.appendChild(li);
       });
     }
