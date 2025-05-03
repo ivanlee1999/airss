@@ -210,6 +210,20 @@ apiApp.get('/articles-rss', async (req, res) => {
     }
   }
 
+  // Fetch the original feed to get its image/thumbnail if available
+  let feedImage = null;
+  if (feedId) {
+    try {
+      const parser = new Parser({ customFields: { feed: ['image'] } });
+      const originalFeed = await parser.parseURL(feed.url);
+      if (originalFeed.image && originalFeed.image.url) {
+        feedImage = originalFeed.image.url;
+      }
+    } catch (error) {
+      console.error(`Failed to fetch original feed image: ${error.message}`);
+    }
+  }
+
   const newFeed = new Feed({
     title: feed ? `${feed.name} Summary` : 'RSS Summary',
     description: feed ? `Daily RSS article digests for ${feed.name}` : 'Daily digests of all articles from all feeds',
@@ -220,6 +234,7 @@ apiApp.get('/articles-rss', async (req, res) => {
     generator: 'airss',
     feedLinks: { rss2: `${API_BASE_URL}/articles-rss` },
     author: { name: 'RSS Publisher' },
+    image: feedImage,
   });
 
   // Debug: Print out all articles
@@ -264,7 +279,8 @@ apiApp.get('/articles-rss', async (req, res) => {
         link: `${API_BASE_URL}/articles-rss?interval=${encodeURIComponent(label)}&date=${start.toISOString()}`,
         description: `Articles from ${start.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} to ${end.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST`,
         content: `<ul>${htmlList}</ul>`,
-        date: end
+        date: end,
+        image: feedImage // Add the original feed's thumbnail to each item
       });
     }
   });
