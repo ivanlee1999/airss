@@ -52,12 +52,54 @@ async function fetchAllFeeds() {
                 const existing = await db.collection('articles').findOne({ link: item.link });
                 
                 if (!existing) {
-                  // Only extract article content if it doesn't exist yet
-                  const articleData = await extractArticle(item.link);
-                  if (articleData && articleData.content) {
-                    console.log(
-                      `      [Full Article Extracted]:\n${articleData.content.substring(0, 1000)}...`
-                    );
+                  try {
+                    // Try to extract article content if it doesn't exist yet
+                    const articleData = await extractArticle(item.link);
+                    if (articleData && articleData.content) {
+                      console.log(
+                        `      [Full Article Extracted]:
+${articleData.content.substring(0, 1000)}...`
+                      );
+                      
+                      await db.collection('articles').insertOne({
+                        id: item.link,
+                        feedUrl: sub.url,
+                        feedId: sub._id,
+                        title: item.title,
+                        link: item.link,
+                        pubDate: item.pubDate || new Date().toISOString(),
+                        content: articleData.content,
+                        summary: null,
+                        sentToGemini: false,
+                        processedAt: new Date().toISOString(),
+                        feedName: sub.name
+                      });
+                      console.log(`      [Article stored successfully]: ${item.title}`);
+                    } else {
+                      // Fallback: Use the description from the RSS feed if available
+                      console.log("      [No full article content extracted, using RSS description as fallback]");
+                      const content = item.content || item.contentSnippet || item.description || '';
+                      
+                      await db.collection('articles').insertOne({
+                        id: item.link,
+                        feedUrl: sub.url,
+                        feedId: sub._id,
+                        title: item.title,
+                        link: item.link,
+                        pubDate: item.pubDate || new Date().toISOString(),
+                        content: content,
+                        summary: null,
+                        sentToGemini: false,
+                        processedAt: new Date().toISOString(),
+                        feedName: sub.name,
+                        extractionFailed: true // Flag to indicate extraction failed
+                      });
+                      console.log(`      [Article stored with RSS content]: ${item.title}`);
+                    }
+                  } catch (extractionError) {
+                    // Fallback: Store the article with content from the RSS feed
+                    console.log(`      [Extraction failed: ${extractionError.message}, using RSS description as fallback]`);
+                    const content = item.content || item.contentSnippet || item.description || '';
                     
                     await db.collection('articles').insertOne({
                       id: item.link,
@@ -66,14 +108,14 @@ async function fetchAllFeeds() {
                       title: item.title,
                       link: item.link,
                       pubDate: item.pubDate || new Date().toISOString(),
-                      content: articleData.content,
+                      content: content,
                       summary: null,
                       sentToGemini: false,
                       processedAt: new Date().toISOString(),
-                      feedName: sub.name
+                      feedName: sub.name,
+                      extractionFailed: true // Flag to indicate extraction failed
                     });
-                  } else {
-                    console.log("      [No full article content extracted]");
+                    console.log(`      [Article stored with RSS content]: ${item.title}`);
                   }
                 } else {
                   console.log(`      [Article already exists, skipping extraction and insert]: ${item.link}`);
@@ -133,5 +175,123 @@ function startSummarizeJob(freqMs = 1 * 5 * 1000) {
   setInterval(summarizeAllArticles, freqMs);
 }
 
-export { startFeedJob, fetchAllFeeds, startSummarizeJob, summarizeAllArticles };
+// Fetch a single feed by URL
+async function fetchSingleFeed(url, name) {
+  if (!url) return;
+  const db = await connectDB();
+  console.log(`Fetching single RSS feed: ${name} (${url})...`);
+  
+  try {
+    const parser = new Parser();
+    const feed = await parser.parseURL(url);
+    console.log(`Fetched feed: ${feed.title} (${url})`);
+    
+    // Find the subscription ID for this feed
+    const subscription = await db.collection('subscriptions').findOne({ url });
+    if (!subscription) {
+      console.error(`Subscription not found for URL: ${url}`);
+      return;
+    }
+    
+    // Process articles in parallel (with a reasonable concurrency limit)
+    const ARTICLE_CONCURRENCY = 5; // Process 5 articles at a time
+    
+    // Create chunks of articles to process in parallel
+    const articleChunks = [];
+    for (let i = 0; i < feed.items.length; i += ARTICLE_CONCURRENCY) {
+      articleChunks.push(feed.items.slice(i, i + ARTICLE_CONCURRENCY));
+    }
+    
+    // Process each chunk of articles in parallel
+    for (const articleChunk of articleChunks) {
+      await Promise.all(articleChunk.map(async (item, chunkIdx) => {
+        const idx = chunkIdx + articleChunks.indexOf(articleChunk) * ARTICLE_CONCURRENCY;
+        console.log(`  [${idx + 1}] ${item.title} - ${item.link}`);
+        
+        if (item.link) {
+          try {
+            // First check if the article already exists
+            const existing = await db.collection('articles').findOne({ link: item.link });
+            
+            if (!existing) {
+              try {
+                // Try to extract article content if it doesn't exist yet
+                const articleData = await extractArticle(item.link);
+                if (articleData && articleData.content) {
+                  console.log(
+                    `      [Full Article Extracted]:
+${articleData.content.substring(0, 1000)}...`
+                  );
+                  
+                  await db.collection('articles').insertOne({
+                    id: item.link,
+                    feedUrl: url,
+                    feedId: subscription._id,
+                    title: item.title,
+                    link: item.link,
+                    pubDate: item.pubDate || new Date().toISOString(),
+                    content: articleData.content,
+                    summary: null,
+                    sentToGemini: false,
+                    processedAt: new Date().toISOString(),
+                    feedName: name
+                  });
+                  console.log(`      [Article stored successfully]: ${item.title}`);
+                } else {
+                  // Fallback: Use the description from the RSS feed if available
+                  console.log("      [No full article content extracted, using RSS description as fallback]");
+                  const content = item.content || item.contentSnippet || item.description || '';
+                  
+                  await db.collection('articles').insertOne({
+                    id: item.link,
+                    feedUrl: url,
+                    feedId: subscription._id,
+                    title: item.title,
+                    link: item.link,
+                    pubDate: item.pubDate || new Date().toISOString(),
+                    content: content,
+                    summary: null,
+                    sentToGemini: false,
+                    processedAt: new Date().toISOString(),
+                    feedName: name,
+                    extractionFailed: true // Flag to indicate extraction failed
+                  });
+                  console.log(`      [Article stored with RSS content]: ${item.title}`);
+                }
+              } catch (extractionError) {
+                // Fallback: Store the article with content from the RSS feed
+                console.log(`      [Extraction failed: ${extractionError.message}, using RSS description as fallback]`);
+                const content = item.content || item.contentSnippet || item.description || '';
+                
+                await db.collection('articles').insertOne({
+                  id: item.link,
+                  feedUrl: url,
+                  feedId: subscription._id,
+                  title: item.title,
+                  link: item.link,
+                  pubDate: item.pubDate || new Date().toISOString(),
+                  content: content,
+                  summary: null,
+                  sentToGemini: false,
+                  processedAt: new Date().toISOString(),
+                  feedName: name,
+                  extractionFailed: true // Flag to indicate extraction failed
+                });
+                console.log(`      [Article stored with RSS content]: ${item.title}`);
+              }
+            } else {
+              console.log(`      [Article already exists, skipping extraction and insert]: ${item.link}`);
+            }
+          } catch (err) {
+            console.log(`      [Failed to extract article]: ${err.message}`);
+          }
+        }
+      }));
+    }
+  } catch (err) {
+    console.error(`Failed to fetch ${url}:`, err.message);
+  }
+}
+
+export { startFeedJob, fetchAllFeeds, fetchSingleFeed, startSummarizeJob, summarizeAllArticles };
 
