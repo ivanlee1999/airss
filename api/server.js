@@ -20,6 +20,7 @@ import Parser from 'rss-parser';
 const rssParser = new Parser();
 
 import { getAllSubscriptions, subscribeToFeed, deleteSubscription, updateSubscriptionName } from './subscriptions.js';
+import { fetchSingleFeed } from './feeds.js';
 import { getAllArticles, getArticlesByFeedId, getFeedById, deleteArticlesByFeedId } from './articles.js';
 
 apiApp.get("/subscriptions", async (req, res) => {
@@ -42,8 +43,9 @@ apiApp.post("/subscribe", async (req, res) => {
       return res.status(400).json({ error: "Failed to parse RSS feed" });
     }
   }
-  await subscribeToFeed(url, feedName);
-  // await fetchAllFeeds();
+  const subscription = await subscribeToFeed(url, feedName);
+  // Only fetch this single feed instead of all feeds
+  await fetchSingleFeed(url, feedName);
   res.json({ message: `Subscribed to ${feedName} (${url})` });
 });
 
@@ -56,13 +58,13 @@ apiApp.delete("/subscription/:id", async (req, res) => {
     // Delete associated articles first
     const deletedArticlesCount = await deleteArticlesByFeedId(id);
     console.log(`Deleted ${deletedArticlesCount} articles associated with subscription ${id}`);
-    
+
     // Then delete the subscription
     const deleted = await deleteSubscription(id);
     if (deleted) {
-      res.json({ 
-        message: "Subscription deleted successfully", 
-        articlesDeleted: deletedArticlesCount 
+      res.json({
+        message: "Subscription deleted successfully",
+        articlesDeleted: deletedArticlesCount
       });
     } else {
       res.status(404).json({ error: "Subscription not found" });
@@ -77,14 +79,14 @@ apiApp.delete("/subscription/:id", async (req, res) => {
 apiApp.patch("/subscription/:id", async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
-  
+
   if (!id) {
     return res.status(400).json({ error: "Missing subscription ID" });
   }
   if (!name) {
     return res.status(400).json({ error: "Missing subscription name" });
   }
-  
+
   try {
     const updated = await updateSubscriptionName(id, name);
     if (updated) {
@@ -169,16 +171,16 @@ apiApp.get('/articles-rss', async (req, res) => {
   // Generate intervals for the past 10 days
   let intervalList = [];
   let refDate = new Date(nowPst.getFullYear(), nowPst.getMonth(), nowPst.getDate());
-  
+
   // Generate intervals for today and the past 9 days (10 days total)
   for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
     const currentDate = new Date(refDate);
     currentDate.setDate(currentDate.getDate() - dayOffset);
-    
+
     // Add each interval type for this day
     for (const interval of intervals) {
       let start, end, displayDate;
-      
+
       if (interval.label === '21:00-12:00') {
         // Special case for overnight interval
         end = new Date(currentDate);
@@ -200,7 +202,7 @@ apiApp.get('/articles-rss', async (req, res) => {
         start.setHours(17, 0, 0, 0);
         displayDate = new Date(end);
       }
-      
+
       intervalList.push({
         label: interval.label,
         start,
@@ -214,11 +216,20 @@ apiApp.get('/articles-rss', async (req, res) => {
   let feedImage = null;
   if (feedId) {
     try {
-      const parser = new Parser({ customFields: { feed: ['image'] } });
+      // Configure parser to extract image information correctly
+      const parser = new Parser();
+      
       const originalFeed = await parser.parseURL(feed.url);
-      if (originalFeed.image && originalFeed.image.url) {
+      console.log('Feed image data:', JSON.stringify(originalFeed.image));
+      
+      // Extract image URL from the feed
+      if (originalFeed.image) {
+        // The rss-parser library already parses the image object for us
         feedImage = originalFeed.image.url;
+        console.log('Found image URL in feed:', feedImage);
       }
+      
+      console.log('Using feed image URL:', feedImage);
     } catch (error) {
       console.error(`Failed to fetch original feed image: ${error.message}`);
     }
@@ -236,12 +247,19 @@ apiApp.get('/articles-rss', async (req, res) => {
     feedLinks: { rss2: `${API_BASE_URL}/articles-rss` },
     author: { name: 'RSS Publisher' },
   };
-  
+
   // Only add image if it's a valid URL
-  if (feedImage && typeof feedImage === 'string' && feedImage.startsWith('http')) {
-    feedOptions.image = feedImage;
+  if (feedImage) {
+    // Ensure feedImage is a string and starts with http
+    if (typeof feedImage === 'string' && feedImage.startsWith('http')) {
+      // Use the standard RSS image format
+      feedOptions.image = feedImage;
+      console.log('Added image URL to feed:', feedImage);
+    } else {
+      console.log('Invalid image URL format:', feedImage);
+    }
   }
-  
+
   const newFeed = new Feed(feedOptions);
 
   // Debug: Print out all articles
@@ -279,8 +297,8 @@ apiApp.get('/articles-rss', async (req, res) => {
       }).join('');
       const feedNamePart = feed ? `${feed.name} ` : '';
       const timePeriod = `${label} PST (${start.toLocaleDateString('en-US')})`;
-      
-      // Create item options object
+
+      // Create item options
       const itemOptions = {
         title: `${feedNamePart}Summary ${timePeriod}`,
         id: `${start.toISOString()}_${label}`,
@@ -292,6 +310,7 @@ apiApp.get('/articles-rss', async (req, res) => {
       
       // Only add image if it's a valid URL
       if (feedImage && typeof feedImage === 'string' && feedImage.startsWith('http')) {
+        // For items, use the same approach as the feed
         itemOptions.image = feedImage;
       }
       
